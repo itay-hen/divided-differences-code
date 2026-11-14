@@ -43,7 +43,8 @@ The scripts that check the instructor's solutions manual are not included.
 
 ## Citation
 
-See `CITATION.cff`. A DOI for each release is provided through Zenodo.
+See `CITATION.cff`. The release tagged for the printed edition of the book
+will be marked as such.
 
 ## License
 
