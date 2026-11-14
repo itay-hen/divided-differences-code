@@ -1,0 +1,5 @@
+# Solutions-manual checks are distributed to instructors only
+solutions/
+__pycache__/
+*.pyc
+.DS_Store
