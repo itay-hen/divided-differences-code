@@ -53,13 +53,14 @@ def dd_expi_squaring(E, t):
     k = max(0, math.ceil(math.log2(s))) if s > 0 else 0
     y = -1j * t * (E - mid) / 2**k     # centred, |y| <= 1/2
     th = 2.0**round(math.log2(max(1.0, n / math.e)))
-    c = [1.0]
+    d = [1.0]                          # d_m = th^m/m!: no underflow
     for m in range(1, n + 40):         # Lemma 9.1 with s = 1
-        c.append(c[-1] / m)
+        d.append(d[-1] * th / m)
+    w = y / th                         # p(Y_th) = sum d_m (Y_th/th)^m
     G = np.zeros((n, n), dtype=complex)
-    for cm in reversed(c):             # G = p(Y_th), Horner's rule
-        G = y[:, None] * G + th * np.vstack([G[1:], np.zeros(n)])
-        G += cm * np.eye(n)
+    for dm in reversed(d):             # Horner's rule
+        G = w[:, None] * G + np.vstack([G[1:], np.zeros(n)])
+        G += dm * np.eye(n)
     i, j = np.indices((n, n))
     P = np.where(j >= i, 2.0**(i - j), 0.0)
     for _ in range(k):                 # G <- R G^2 R^-1, R=diag(2^i)

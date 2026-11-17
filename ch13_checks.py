@@ -62,9 +62,9 @@ class PMRQMC:
             zs.append(zs[-1] ^ self.ops[j][0])
         return zs
 
-    def logamp(self, zs, S):
-        return sum(math.log(-self.ops[j][1][z])
-                   for j, z in zip(S, zs[1:]))
+    def logamp(self, zs, S):            # -inf if an amplitude is zero
+        a = [-self.ops[j][1][z] for j, z in zip(S, zs[1:])]
+        return sum(map(math.log, a)) if all(a) else -math.inf
 
     def reset(self):                    # rebuild the dd-state
         self.dd = ExpDD(self.sig, self.Mt)

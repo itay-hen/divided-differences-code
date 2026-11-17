@@ -77,13 +77,14 @@ def dd_exp_squaring(xs):
     k = max(0, math.ceil(math.log2(s))) if s > 0 else 0
     y = (x - lo) / 2**k                # spread at most 1
     th = 2.0**round(math.log2(max(1.0, n / math.e)))   # range
-    c = [1.0]
+    d = [1.0]                          # d_m = th^m/m!: no underflow
     for m in range(1, n + 40):         # Lemma 9.1 with s = 1
-        c.append(c[-1] / m)
-    G = np.zeros((n, n))               # G = p(Y_th), Horner's rule
-    for cm in reversed(c):
-        G = y[:, None] * G + th * np.vstack([G[1:], np.zeros(n)])
-        G += cm * np.eye(n)
+        d.append(d[-1] * th / m)
+    w = y / th                         # p(Y_th) = sum d_m (Y_th/th)^m
+    G = np.zeros((n, n))               # Horner's rule
+    for dm in reversed(d):
+        G = w[:, None] * G + np.vstack([G[1:], np.zeros(n)])
+        G += dm * np.eye(n)
     G *= math.exp(-s / 2**(k + 1))     # centre the range
     i, j = np.indices((n, n))
     P = np.where(j >= i, 2.0**(i - j), 0.0)

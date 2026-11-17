@@ -42,13 +42,13 @@ dd_exp_taylor, dd_exp_squaring, ref_exp = (
 # ---- Listing 10.1 -----------------------------------------------------------
 def loewner_exp(lam):
     """L[i, j] = exp[lam_i, lam_j] for real lam, without cancellation:
-    exp[a, b] = e^min(a,b) expm1(|a - b|)/|a - b|, eq. (10.4)."""
+    exp[a, b] = -e^max(a,b) expm1(-|a - b|)/|a - b|, eq. (10.4)."""
     a, b = np.meshgrid(lam, lam, indexing="ij")
     d = np.abs(a - b)
-    ratio = np.ones_like(d)
+    ratio = np.ones_like(d)            # confluent case a = b
     nz = d > 0
-    ratio[nz] = np.expm1(d[nz]) / d[nz]
-    return np.exp(np.minimum(a, b)) * ratio
+    ratio[nz] = -np.expm1(-d[nz]) / d[nz]       # in (0, 1]
+    return np.exp(np.maximum(a, b)) * ratio
 
 
 def frechet_hermitian(A, E, loewner=loewner_exp):

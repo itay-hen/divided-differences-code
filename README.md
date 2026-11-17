@@ -3,7 +3,9 @@
 Code accompanying the book *Divided Differences: From Interpolation to
 Quantum Simulation* (CRC Press, in preparation). Every numerical statement in
 the book is produced or checked by a script in this repository, and every code
-listing in the book is a verbatim copy of a function defined here. Appendix C
+listing in the book is a copy of a function defined here (with comments
+sometimes shortened). The checks test the cases they state; they do not
+certify an algorithm for every input. Appendix C
 of the book describes the scripts in detail.
 
 ## Requirements
@@ -27,7 +29,8 @@ The scripts run on one core and need no configuration.
 | `sync_listings_chNN.py` | Copies the listings into the chapter sources (needs the book's LaTeX sources, which are not part of this repository). |
 | `appC_benchmarks.py` | Writes the benchmark node sets B1–B8 to `benchmarks/` and computes their reference values. |
 | `benchmarks/` | The benchmark node sets of Appendix C, one node per line, and their 60-digit reference values. |
-| `run_all_checks.py` | Runs every check script and prints a summary. |
+| `regressions.py` | Cases from an external review of the draft: counterexamples to earlier versions of listings and statements, now testing the corrected behaviour. |
+| `run_all_checks.py` | Runs every check script, prints a summary, and exits with status 1 if any check fails or any script errors. |
 
 ## Running the checks
 
