@@ -10,6 +10,7 @@ import math
 import random
 
 import mpmath as mp
+import numpy as np
 
 mp.mp.dps = 80
 U = 2.0**-53
@@ -370,6 +371,56 @@ snap = mp.e**xbar / mp.factorial(7)
 ex = ref_exp(xs)
 dmax = max(abs(x - xbar) for x in xs)
 report("snapping to the mean: error <= e^delta - 1", abs(snap / ex - 1) <= mp.e**dmax - 1, f"{mp.nstr(abs(snap / ex - 1), 3)} <= {mp.nstr(mp.e**dmax - 1, 3)}")
+
+
+# ============================================================== 7.1 barycentric formulas
+def _bary_w(x):
+    return np.array([1 / np.prod(x[j] - np.delete(x, j)) for j in range(len(x))])
+
+
+def _newton_eval(x, fv, t):
+    c = fv.astype(float).copy()
+    for k in range(1, len(x)):
+        c[k:] = (c[k:] - c[k - 1:-1]) / (x[k:] - x[:-k])
+    p = np.full_like(t, c[-1])
+    for k in range(len(x) - 2, -1, -1):
+        p = p * (t - x[k]) + c[k]
+    return p
+
+
+def _leja(x):
+    x = list(x)
+    o = [max(x, key=abs)]
+    x.remove(o[0])
+    while x:
+        j = max(range(len(x)), key=lambda i: np.prod(np.abs(x[i] - np.array(o))))
+        o.append(x.pop(j))
+    return np.array(o)
+
+
+_runge = lambda x: 1 / (1 + 25 * x**2)
+_t = np.sort(np.random.default_rng(0).uniform(-1, 1, 400))
+_BARY = {}
+for q in (20, 60, 100):
+    x = np.cos((2 * np.arange(q + 1) + 1) * np.pi / (2 * q + 2))
+    fv = _runge(x)
+    with mp.workdps(50):
+        xm = [mp.mpf(v) for v in x]
+        fm = [mp.mpf(v) for v in fv]
+        wm = [1 / mp.fprod(xm[j] - xm[k] for k in range(q + 1) if k != j) for j in range(q + 1)]
+        ex = np.array([float(mp.fsum(wm[j] * fm[j] / (mp.mpf(s) - xm[j]) for j in range(q + 1))
+                             / mp.fsum(wm[j] / (mp.mpf(s) - xm[j]) for j in range(q + 1))) for s in _t])
+    w = _bary_w(x)
+    d = _t[:, None] - x[None, :]
+    b2 = (w * fv / d).sum(1) / (w / d).sum(1)
+    b1 = np.prod(d, axis=1) * (w * fv / d).sum(1)
+    xs_, xl = np.sort(x), _leja(x)
+    _BARY[q] = [np.max(np.abs(v - ex)) for v in
+                (b2, b1, _newton_eval(xs_, _runge(xs_), _t), _newton_eval(xl, _runge(xl), _t))]
+    print("    q=%d: bary2 %.1e  bary1 %.1e  Newton sorted %.1e  Newton Leja %.1e" % ((q,) + tuple(_BARY[q])))
+report("barycentric formulas and Leja-ordered Newton form accurate (< 1e-14)",
+       all(max(v[0], v[1], v[3]) < 1e-14 for v in _BARY.values()))
+report("Newton form with sorted nodes fails at q = 60, 100", _BARY[60][2] > 0.1 and _BARY[100][2] > 1e10)
 
 print()
 print(f"{sum(RESULTS)}/{len(RESULTS)} checks passed")

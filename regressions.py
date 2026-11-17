@@ -82,7 +82,7 @@ for i in range(4):
         ok &= abs(Lw[i, j] / r - 1) < 1e-13
 report("10.1 Loewner: confluent, clustered and large eigenvalues", ok)
 
-# ---- 4. walk sums: grouped convergence versus absolute convergence (Thm 10.7)
+# ---- 4. walk sums: grouped convergence versus absolute convergence (Thm 10.8)
 V = np.array([[0, 1, 1, 1], [1, 0, 1, -1], [1, 1, 0, 1], [1, -1, 1, 0]], float)
 ok = abs(np.linalg.norm(V, 2) - math.sqrt(5)) < 1e-12
 ok &= abs(max(np.linalg.eigvalsh(np.abs(V))) - 3) < 1e-12
@@ -90,7 +90,7 @@ c = 2.8                                       # f(z) = 1/(c - z), dd = c^-(q+1)
 grouped = [abs(np.linalg.matrix_power(V, q)[0, 0]) / c ** (q + 1) for q in (40, 80, 120)]
 absolute = [np.linalg.matrix_power(np.abs(V), q)[0, 0] / c ** (q + 1) for q in (40, 80, 120)]
 ok &= grouped[-1] < 1e-5 and absolute[2] > absolute[1] > absolute[0] > 1
-report("10.7 Neumann series converges, absolute walk sum diverges", ok,
+report("10.8 Neumann series converges, absolute walk sum diverges", ok,
        f"{grouped[-1]:.1e} vs {absolute[-1]:.1e}")
 
 # ---- 5. Sambe cutoff needs K >= q max|m_r| (Cor. 11.17)

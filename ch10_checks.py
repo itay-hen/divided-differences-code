@@ -122,7 +122,7 @@ def dd_push(w, q, y):
 
 def walk_element(H, x, y, beta, Q):
     """<y| e^{-beta H} |x> from the walks x -> y of length <= Q
-    (Theorem 10.7), by depth-first search over the entries of H."""
+    (Theorem 10.8), by depth-first search over the entries of H."""
     E = np.diag(H).real
     sigma = -beta * E.max()              # nodes -beta E >= sigma
     M = math.ceil(math.e * beta * np.ptp(E) + 37)   # Lemma 9.1
@@ -515,6 +515,37 @@ for L_ in [20, 30]:
     THETA.append((L_, e))
     print(f"    L={L_}: expm with couplings theta = L: rel {e:.1e}")
 report("theta-scaled couplings make expm accurate (< 1e-12)", max(e for _, e in THETA) < 1e-12)
+
+
+# ============================================================== 10.2 trace derivatives
+_r = np.random.default_rng(11)
+_n = 5
+_A = _r.normal(size=(_n, _n)) + 1j * _r.normal(size=(_n, _n)); _A = (_A + _A.conj().T) / 2
+_B = _r.normal(size=(_n, _n)) + 1j * _r.normal(size=(_n, _n)); _B = (_B + _B.conj().T) / 2
+_lam, _Q = np.linalg.eigh(_A)
+_Bt = _Q.conj().T @ _B @ _Q
+_beta = 1.3
+with mp.workdps(40):
+    Am, Bm = mp.matrix(_A.tolist()), mp.matrix(_B.tolist())
+    trf = lambda s: mp.re(sum(mp.expm(-_beta * (Am + s * Bm))[i, i] for i in range(_n)))
+    d2 = mp.diff(trf, 0, 2)
+    fpd = lambda a, b: (_beta**2 * mp.e**(-_beta * a) if a == b else
+                        (-_beta * mp.e**(-_beta * a) + _beta * mp.e**(-_beta * b)) / (a - b))
+    form = mp.fsum(fpd(mp.mpf(_lam[i]), mp.mpf(_lam[j])) * abs(_Bt[i, j])**2
+                   for i in range(_n) for j in range(_n))
+report("trace second derivative = sum f'[l_i, l_j] |B_ij|^2", abs(d2 / form - 1) < 1e-12,
+       f"{float(abs(d2 / form - 1)):.1e}")
+ok = True
+for _ in range(20):
+    A = _r.normal(size=(_n, _n)); A = A + A.T
+    B = _r.normal(size=(_n, _n)); B = B + B.T
+    lhs = np.log(np.trace(sl.expm(A + B)))
+    rhs = np.log(np.trace(sl.expm(A))) + np.trace(B @ sl.expm(A)) / np.trace(sl.expm(A))
+    X, Y = sl.expm(A / 3), sl.expm(B / 3)
+    X, Y = X / np.trace(X), Y / np.trace(Y)
+    klein = np.trace(X @ sl.logm(X) - X @ sl.logm(Y)).real
+    ok &= lhs >= rhs - 1e-12 and klein >= -1e-12
+report("Peierls-Bogoliubov and relative-entropy (Klein) inequalities", ok)
 
 print()
 print(f"{sum(RESULTS)}/{len(RESULTS)} checks passed")

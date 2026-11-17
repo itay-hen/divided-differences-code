@@ -126,3 +126,87 @@ xs_r = [0.1, -0.3, 0.25, 0.0, -0.15]
 c, r = 0.0, 0.3
 best = min((Rr * math.exp(c + Rr)) / (Rr - r) ** 5 for Rr in np.linspace(0.31, 10, 2000))
 print(f"[14] e^[x] = {float(dd(mp.exp, xs_r)):.4e} <= contour bound {best:.4e}")
+
+
+def mark(ok):
+    return "" if ok else "FAIL "
+
+
+# 15. Chain rule (Theorem 4.x) at q = 4, against the explicit formula
+f_, g_ = (lambda y: mp.sin(y) + y**3), (lambda t: mp.exp(t) + t / 3)
+ts = [0.1, 0.35, 0.7, 1.2, 1.9]
+xs_c = [g_(mp.mpf(t)) for t in ts]
+chain = 0
+for k in range(1, 5):
+    for mid in itertools.combinations(range(1, 4), k - 1):
+        idx = (0,) + mid + (4,)
+        term = dd(f_, [xs_c[i] for i in idx])
+        for a, b in zip(idx, idx[1:]):
+            term *= dd(g_, ts[a:b + 1])
+        chain += term
+err = abs(chain / dd(lambda t: f_(g_(t)), ts) - 1)
+print(f"{mark(err < 1e-30)}[15] chain rule, q=4:                          {float(err):.1e}")
+
+# 16. Inverse function, second order
+t3 = [mp.mpf(v) for v in (0.2, 0.5, 1.1)]
+ginv = lambda y: mp.findroot(lambda t: g_(t) - y, 0.5)
+lhs = dd(ginv, [g_(t) for t in t3])
+rhs = -dd(g_, t3) / (dd(g_, t3[:2]) * dd(g_, t3[1:]) * dd(g_, [t3[0], t3[2]]))
+print(f"{mark(abs(lhs / rhs - 1) < 1e-30)}[16] inverse function, second order:            {float(abs(lhs / rhs - 1)):.1e}")
+
+# 17. Chebyshev interpolation of the Runge function: bound of Theorem 4.x and rate rho^-(q+1)
+runge = lambda x: 1 / (1 + 25 * x**2)
+grid = np.linspace(-1, 1, 20001)
+
+
+def interp_err(nodes):
+    w = np.array([1 / np.prod(nodes[j] - np.delete(nodes, j)) for j in range(len(nodes))])
+    d = grid[:, None] - nodes[None, :]
+    with np.errstate(all="ignore"):
+        p = (w * runge(nodes) / d).sum(1) / (w / d).sum(1)
+    hit = np.isclose(d, 0).any(1)
+    p[hit] = runge(grid[hit])
+    return np.max(np.abs(p - runge(grid)))
+
+
+rho_r = (1 + math.sqrt(26)) / 5
+ok = True
+for q in (20, 40, 80):
+    ch = np.cos((2 * np.arange(q + 1) + 1) * np.pi / (2 * q + 2))
+    e = interp_err(ch)
+    ok &= abs(e / rho_r ** -(q + 1) - 1) < 0.03
+    # the theorem's bound on a slightly smaller ellipse, where f is analytic
+    rr = rho_r * 0.999
+    a = (rr + 1 / rr) / 2
+    zz = [(rr * np.exp(1j * th) + np.exp(-1j * th) / rr) / 2 for th in np.linspace(0, 2 * np.pi, 4001)]
+    M = max(abs(1 / (1 + 25 * z**2)) for z in zz)
+    ok &= e <= 4 * a * M / ((a - 1) * (rr ** (q + 1) - rr ** -(q + 1)))
+    print(f"     q={q}: Chebyshev error {e:.2e}, rho^-(q+1) = {rho_r ** -(q + 1):.2e}")
+eq20, eq40 = interp_err(np.linspace(-1, 1, 21)), interp_err(np.linspace(-1, 1, 41))
+print(f"     equispaced: {eq20:.1f} (q=20), {eq40:.1e} (q=40)")
+ok &= eq20 > 50 and eq40 > 1e5
+print(f"{mark(ok)}[17] Chebyshev rate and bound; Runge phenomenon")
+
+
+def lebesgue(nodes):
+    w = np.array([1 / np.prod(nodes[j] - np.delete(nodes, j)) for j in range(len(nodes))])
+    d = grid[:, None] - nodes[None, :]
+    with np.errstate(all="ignore"):
+        L = np.abs(w / d).sum(1) / np.abs((w / d).sum(1))
+    return np.nanmax(L[np.isfinite(L)])
+
+
+lc = lebesgue(np.cos((2 * np.arange(21) + 1) * np.pi / 42))
+le = lebesgue(np.linspace(-1, 1, 21))
+ok = lc <= 2 / math.pi * math.log(21) + 1 and 1.0e4 < le < 1.2e4
+print(f"{mark(ok)}[18] Lebesgue constants q=20: Chebyshev {lc:.2f}, equispaced {le:.3g}")
+
+# 19. Higher-order convexity examples
+xp3 = lambda x: max(x, 0) ** 3
+ax3 = lambda x: abs(x) ** 3
+m3 = min(dd(xp3, sorted(rng.uniform(-1, 1, 4))) for _ in range(2000))
+m4 = min(dd(ax3, sorted(rng.uniform(-1, 1, 5))) for _ in range(2000))
+m3a = min(dd(ax3, sorted(rng.uniform(-1, 1, 4))) for _ in range(2000))
+ok = m3 >= -1e-30 and m4 >= -1e-30 and m3a < -0.1
+print(f"{mark(ok)}[19] x_+^3 convex of order 3, |x|^3 of order 4 but not 3: "
+      f"{float(m3):.1e}, {float(m4):.1e}, {float(m3a):.2f}")

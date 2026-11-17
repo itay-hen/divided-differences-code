@@ -518,5 +518,22 @@ best = min(e for _, e in TAB_D)
 report("small-step start: best error >> Taylor start (~u)",
        best > 1e3 * e_tay and e_tay < 1e-15, f"best small-step {best:.1e}")
 
+
+# ============================================================== 12.3 static susceptibility and trace convexity
+_r = np.random.default_rng(12)
+_H = _r.normal(size=(6, 6)); _H = _H + _H.T
+_Aop = _r.normal(size=(6, 6)); _Aop = _Aop + _Aop.T
+_b = 0.7
+_E, _U = np.linalg.eigh(_H)
+_At = _U.T @ _Aop @ _U
+with mp.workdps(40):
+    Hm, Amx = mp.matrix(_H.tolist()), mp.matrix(_Aop.tolist())
+    Zh = lambda h: sum(mp.expm(-_b * (Hm - h * Amx))[i, i] for i in range(6))
+    d2 = mp.diff(Zh, 0, 2)
+    eb = lambda a, c: (-_b * mp.e**(-_b * a) if a == c else
+                       (mp.e**(-_b * a) - mp.e**(-_b * c)) / (a - c))
+    chi = mp.fsum(_At[n, k]**2 * (-eb(mp.mpf(_E[n]), mp.mpf(_E[k]))) for n in range(6) for k in range(6))
+report("beta chi_AA(0) = d^2 Z / dh^2", abs(d2 / (_b * chi) - 1) < 1e-12, f"{float(abs(d2 / (_b * chi) - 1)):.1e}")
+
 print()
 print(f"{sum(RESULTS)}/{len(RESULTS)} checks passed")
