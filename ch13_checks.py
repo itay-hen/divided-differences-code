@@ -135,7 +135,7 @@ def pmr_move(s):
 # ---- Listing 13.3 -----------------------------------------------------------
 def estimators(s, diag):
     """Estimators for one configuration: two energies, q, and the
-    diagonal observable at z0 and averaged over the gaps (13.6)."""
+    diagonal observable at z0 and averaged over the gaps (13.3)."""
     q, b = len(s.S), s.beta
     zs = s.path(s.z0, s.S)
     E = s.E
@@ -198,7 +198,8 @@ def op(n, i, P):
 
 
 def model(n, J, h, a=0.0):
-    """H = -J sum Z_i Z_{i+1} - sum_i h (1 + a Z_{i+1}) X_i (open chain):
+    """H = -J sum Z_i Z_{i+1} - sum_i h (1 + a Z_{i+1}) X_i, open bonds,
+    Z_{n+1} = Z_1 in the field term:
     the transverse-field Ising chain for a = 0, a stoquastic model with
     nonconstant D_j for 0 < a < 1.  Returns (H, E, ops)."""
     N = 2**n

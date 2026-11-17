@@ -42,7 +42,7 @@ dd_exp_squaring = _ns["dd_exp_squaring"]
 def pmr_decompose(H, tol=0.0):
     """PMR of a 2^n x 2^n matrix: H = sum_b D_b X^b with D_b diagonal,
     X^b |z> = |z xor b>.  Returns {b: d_b} with d_b[z] = <z|H|z^b>,
-    keeping only the b with some |d_b| > tol."""
+    keeping the b with some |d_b| > tol; key 0 is the diagonal."""
     N = H.shape[0]
     z = np.arange(N)
     out = {}
@@ -57,8 +57,9 @@ def pmr_decompose(H, tol=0.0):
 def cheb_walk_moment(E, offs, n, absolute=False):
     """mu_n = Tr T_n(H), H = diag(E) + sum_b diag(d_b) X^b with
     spectrum in [-1, 1], as a sum over closed walks of length <= n.
-    offs = {b: d_b}.  The column (T_m[y_0..y_k])_{m<=n} is updated by
-    the three-term recurrence when a node is appended (Chapter 5)."""
+    offs = {b: d_b}; a key b = 0 (the diagonal) is ignored.  The
+    column (T_m[y_0..y_k])_{m<=n} is updated by the three-term
+    recurrence when a node is appended (Chapter 5)."""
     total = 0.0
 
     def dfs(z0, z, k, amp, col):
@@ -70,7 +71,7 @@ def cheb_walk_moment(E, offs, n, absolute=False):
             return
         for b, d in offs.items():
             z2 = z ^ b
-            if d[z2] == 0:
+            if b == 0 or d[z2] == 0:
                 continue
             y, new = E[z2], np.zeros(n + 1)
             if k == 0:

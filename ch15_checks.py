@@ -39,18 +39,20 @@ dd_push, dd_exp_taylor = _ns["dd_push"], _ns["dd_exp_taylor"]
 def occupation_expansion(lev, eps, V, u, T, Q):
     """Column u of e^{-T(A+V)}, A = diag(eps[lev[i]]), summed over
     occupation vectors nu (Thm 15.6): walks are grouped by how often
-    they visit each level, which fixes the divided difference."""
+    they visit each level, which fixes the divided difference.
+    lev: level index of each state; V may be complex; T > 0."""
+    lev = np.asarray(lev)
     N, r = len(lev), len(eps)
     start = tuple(int(a == lev[u]) for a in range(r))
-    cur = {start: np.eye(N)[u]}              # W^{(0)}_{u->.}(nu)
-    out = np.zeros(N)
+    cur = {start: np.eye(N, dtype=complex)[u]}   # W^{(0)}_{u->.}(nu)
+    out = np.zeros(N, dtype=complex)
     for q in range(Q + 1):
         for nu, vec in cur.items():          # (-1)^q W e^{T[-eps^nu]}
             nodes = [-T * eps[a] for a in range(r)
                      for _ in range(nu[a])]
             lg = dd_exp_taylor(nodes) + q * math.log(T)
             out += vec * math.exp(lg)        # (-1)^q cancels the sign
-        new = {}                             # recursion (15.x)
+        new = {}                             # recursion (15.3)
         for nu, vec in cur.items():
             w = -V @ vec                     # one step of -TV
             for a in range(r):

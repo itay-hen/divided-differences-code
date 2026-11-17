@@ -180,7 +180,7 @@ for q in (20, 40, 80):
     a = (rr + 1 / rr) / 2
     zz = [(rr * np.exp(1j * th) + np.exp(-1j * th) / rr) / 2 for th in np.linspace(0, 2 * np.pi, 4001)]
     M = max(abs(1 / (1 + 25 * z**2)) for z in zz)
-    ok &= e <= 4 * a * M / ((a - 1) * (rr ** (q + 1) - rr ** -(q + 1)))
+    ok &= e <= 2 * a * M / ((a - 1) * (rr ** (q + 1) - rr ** -(q + 1)))
     print(f"     q={q}: Chebyshev error {e:.2e}, rho^-(q+1) = {rho_r ** -(q + 1):.2e}")
 eq20, eq40 = interp_err(np.linspace(-1, 1, 21)), interp_err(np.linspace(-1, 1, 41))
 print(f"     equispaced: {eq20:.1f} (q=20), {eq40:.1e} (q=40)")
@@ -202,11 +202,11 @@ ok = lc <= 2 / math.pi * math.log(21) + 1 and 1.0e4 < le < 1.2e4
 print(f"{mark(ok)}[18] Lebesgue constants q=20: Chebyshev {lc:.2f}, equispaced {le:.3g}")
 
 # 19. Higher-order convexity examples
-xp3 = lambda x: max(x, 0) ** 3
+xp3 = lambda x: max(x, 0) ** 2
 ax3 = lambda x: abs(x) ** 3
 m3 = min(dd(xp3, sorted(rng.uniform(-1, 1, 4))) for _ in range(2000))
 m4 = min(dd(ax3, sorted(rng.uniform(-1, 1, 5))) for _ in range(2000))
 m3a = min(dd(ax3, sorted(rng.uniform(-1, 1, 4))) for _ in range(2000))
 ok = m3 >= -1e-30 and m4 >= -1e-30 and m3a < -0.1
-print(f"{mark(ok)}[19] x_+^3 convex of order 3, |x|^3 of order 4 but not 3: "
+print(f"{mark(ok)}[19] x_+^2 convex of order 3, |x|^3 of order 4 but not 3: "
       f"{float(m3):.1e}, {float(m4):.1e}, {float(m3a):.2f}")

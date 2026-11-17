@@ -49,7 +49,7 @@ def dd_expi_squaring(E, t):
     scaling and squaring on the Opitz matrix of the nodes -itE."""
     E = np.asarray(E, dtype=float)
     n, mid = len(E), (E.max() + E.min()) / 2
-    s = t * (E.max() - E.min())        # spread of the nodes -itE
+    s = abs(t) * (E.max() - E.min())   # spread of the nodes -itE
     k = max(0, math.ceil(math.log2(s))) if s > 0 else 0
     y = -1j * t * (E - mid) / 2**k     # centred, |y| <= 1/2
     th = 2.0**round(math.log2(max(1.0, n / math.e)))
@@ -111,7 +111,7 @@ def dyson_driven(D, Vs, ws, t, x, y, Q):
     """<y|U(t)|x> for H(t) = diag(D) + sum_r e^(-i ws[r] t) Vs[r],
     summed over the event sequences of length <= Q (Thm 11.16)."""
     c = (D.max() + D.min()) / 2            # centre of the nodes
-    rho = t * (np.ptp(D) / 2 + Q * max(map(abs, ws)))
+    rho = abs(t) * (np.ptp(D) / 2 + Q * max(map(abs, ws)))
     M = math.ceil(math.e * rho + 37)       # Lemma 9.1
     total = 0j
 
@@ -811,6 +811,19 @@ with mp.workdps(25):
 rhs = -mp_ddc(-T, xl + [v - lam for v in yl])
 report("Cor 11.23: int e^{lam tau} e^{-tau}[y] e^{-(T-tau)}[x] = -e^{-T}[x, y-lam]",
        abs(lhs - rhs) / abs(rhs) < 1e-18, f"{float(abs(lhs - rhs) / abs(rhs)):.0e}")
+
+
+# ============================================================== negative times (review, Nov 2026)
+_E = [0.0, 1.0, 2.5, 4.0]
+ok = True
+for _t in (50.0, -50.0):
+    _mid, _th, _G = dd_expi_squaring(_E, _t)
+    _val = (-1j * _t)**3 * np.exp(-1j * _t * _mid) * _th**(-3) * _G[0, -1]
+    with mp.workdps(30):
+        _ref = complex(mp.fsum(mp.e**(-1j * _t * e) / mp.fprod(e - f for f in _E if f != e)
+                               for e in _E))
+    ok &= abs(_val - _ref) / (abs(_t)**3 / 6) < 1e-14
+report("Listing 11.1 accurate for negative t (t = -50)", ok)
 
 print()
 print(f"{sum(RESULTS)}/{len(RESULTS)} checks passed")

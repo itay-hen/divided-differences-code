@@ -284,6 +284,16 @@ for _ in range(100):
 report("       e^[a,x,y]^2 >= e^[a,x,x] e^[a,y,y]: violations / 100", bad, bad == 0)
 report("       c_1 c_(n+1) <= c_2 c_n for P = e^[a,.]: violations / 100", badc, badc == 0)
 
+# four-point inequality is asymptotically sharp: ratio -> 2 (clustered), -> 1 (spread)
+fp_ratio = lambda A, B, C, D: (ee([A, A, B, C]) * ee([D, D, B, C]) + ee([B, B, A, D]) * ee([C, C, A, D])) / ee([A, B, C, D])**2
+r_spread = fp_ratio(*[mp.mpf(v) for v in (0, 10, 20, 30)])
+r_clust = fp_ratio(*[mp.mpf(v) for v in ("0", "0.001", "0.002", "0.003")])
+_rng4 = np.random.default_rng(55)
+r_min = min(fp_ratio(*[mp.mpf(v) for v in _rng4.uniform(-10, 10, 4)]) for _ in range(200))
+report("       four-point ratio: (0,10,20,30), clustered, min of 200 in [-10,10]",
+       f"{mp.nstr(r_spread, 5)}, {mp.nstr(r_clust, 5)}, {mp.nstr(r_min, 5)}",
+       abs(r_spread - mp.mpf("1.0013")) < 5e-5 and abs(r_clust - 2) < 1e-3 and 1 <= r_min < 1.001)
+
 # ---------------------------------------------------------------- 5.4 Chebyshev
 def chebT(n, y):
     return mp.chebyt(n, y)

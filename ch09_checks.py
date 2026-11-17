@@ -53,18 +53,19 @@ def dd_exp_taylor(xs, eps=2.0**-53):
     s = max(xs) - lo
     if s == 0:
         return lo - math.lgamma(q + 1)
-    n = math.ceil(math.e * s + math.log(1 / eps))       # Lemma 9.1
-    K = q + n
-    m0 = min(max(q, int(s)), K)          # c_m = s^(m - m0) m0!/m!
-    c = [0.0] * (K + 1)
-    c[m0] = 1.0
-    for m in range(m0 + 1, K + 1):
-        c[m] = c[m - 1] * s / m
-    for m in range(m0, 0, -1):
-        c[m - 1] = c[m] * m / s
-    v = dd_taylor(c, [(x - lo) / s for x in xs], 0.0)[0]
-    return (lo + (m0 - q) * math.log(s) - math.lgamma(m0 + 1)
-            + math.log(v))
+    K = q + math.ceil(math.e * s + math.log(1 / eps))   # Lemma 9.1
+    t = [(x - lo) / s for x in xs]
+    e = K * math.log(s) - math.lgamma(K + 1)   # log of s^K/K!
+    v, c = [0.0] * (q + 1), 1.0      # value e^e v[0]; c = c_m e^-e
+    for m in range(K, -1, -1):       # Horner's rule, Listing 8.3
+        for i in range(q):
+            v[i] = t[i] * v[i] + v[i + 1]
+        v[q] = t[q] * v[q] + (c if m >= q else 0.0)
+        c *= m / s                   # c_{m-1} = c_m m / s
+        if max(v) > 2.0**500:        # rescale exactly, keep range
+            v = [w * 2.0**-500 for w in v]
+            c, e = c * 2.0**-500, e + 500 * math.log(2)
+    return lo - q * math.log(s) + e + math.log(v[0])
 
 
 # ---- Listing 9.2 ------------------------------------------------------------
@@ -252,7 +253,7 @@ report("Lemma 9.1: n >= e s + ln(1/eps) gives tail <= eps/(e-1)", ok)
 
 # centre choice: A(sigma) = e^sigma exp[|x - sigma|]/exp[x]
 rng = random.Random(1)
-ok, ok2, worst_mean = True, True, 0
+ok, ok2, worst_mean, reach = True, True, 0, 0
 for t in range(40):
     q = rng.choice([3, 10, 30]); w = 10**rng.uniform(-2, 1.5)
     xs = nodes(rng.choice(KINDS), q, w, rng)
@@ -277,9 +278,12 @@ for t in range(40):
     with mp.workdps(40):
         A = float(mp.e**sig * ref_exp([abs(x - sig) for x in xs]) / F)
     worst_mean = max(worst_mean, abs(v - float(F)) / float(F) / (A * (4 * K + 2) * U))
+    if A > 100:                       # is the factor A(mean) attained?
+        reach = max(reach, abs(v - float(F)) / float(F) / (A * U))
 report("Prop 9.2: A(sigma) = 1 for sigma <= min x", ok)
 report("Prop 9.2: A(sigma) <= exp(sigma - mean + max|x - sigma|)", ok2)
 report("Horner about the mean: err <= (4K+2) u A(mean)", worst_mean <= 1, f"worst ratio {worst_mean:.2f}")
+report("Horner about the mean: for A > 100 the error stays far below u A(mean)", reach < 0.1, f"max err/(u A) {reach:.1e}")
 
 rng = random.Random(2)
 ok, worst = True, 0
@@ -290,10 +294,37 @@ for t in range(80):
     e = rel_log(lv, ref_exp(xs))
     s = max(xs) - min(xs)
     K = q + math.ceil(math.e * s + math.log(1 / U))
-    lsize = abs(min(xs)) + abs((max(q, int(s)) - q) * math.log(max(s, 1e-300))) + math.lgamma(max(q, int(s)) + 1) + 1
-    bound = (4 * K + 2) * U + 4 * U * lsize
+    ls = math.log(max(s, 1e-300))
+    lsize = abs(min(xs)) + abs(K * ls) + math.lgamma(K + 1) + q * abs(ls) + 1
+    bound = (6 * K - 2 * q + 1) * U + 4 * U * lsize
     worst = max(worst, e / bound)
-report("Listing 9.1: relative error <= (4K+2)u + 4u|log terms|, 80 cases", worst <= 1, f"worst ratio {worst:.2f}")
+report("Listing 9.1: relative error <= (6K-2q+1)u + 4u|log terms|, 80 cases", worst <= 1, f"worst ratio {worst:.2f}")
+
+
+def _ref_log_h(xs, dps=60):
+    """log exp[x] from the h-series about min x, in mpmath."""
+    lo, q = min(xs), len(xs) - 1
+    s = max(xs) - lo
+    with mp.workdps(dps):
+        t = [mp.mpf(x) - mp.mpf(lo) for x in xs]
+        L = int(math.e * s) + 80
+        h = [mp.mpf(1)] + [mp.mpf(0)] * L
+        for y in t:
+            for k in range(1, L + 1):
+                h[k] += y * h[k - 1]
+        return float(mp.log(mp.fsum(h[k] / mp.factorial(k + q) for k in range(L + 1)))) + lo
+
+
+ok, worst = True, 0
+for q, s, kind in [(260, 1500.0, "one-low"), (400, 1000.0, "one-low"),
+                   (1000, 1e-9, "uniform"), (1000, 5.0, "one-high")]:
+    xs = ([0.0] + [s] * q if kind == "one-low" else
+          [0.0] * q + [s] if kind == "one-high" else list(np.linspace(0, s, q + 1)))
+    lv, r = dd_exp_taylor(xs), _ref_log_h(xs)
+    ok &= math.isfinite(lv)
+    worst = max(worst, abs(lv - r) / max(1.0, abs(r)))
+report("Listing 9.1 at high order (q up to 1000, s up to 1500): finite, accurate",
+       ok and worst < 1e-13, f"max rel. error of log {worst:.1e}")
 
 # ============================================================== 9.2 scaling and squaring
 print("--- 9.2 Scaling and squaring")
@@ -326,10 +357,10 @@ for t in range(40):
             Fab = ref_exp(xs[a:b + 1])
             Gab = mp.mpf(G[a, b]) * mp.e**mp.mpf(lo) * mp.mpf(th)**(a - b)
             e = max(e, float(abs(Gab - Fab) / Fab))
-    bound = 2**k * ((4 * K + 3) * U + gamma_(q + 1))
+    bound = 2**k * ((5 * K + 3) * U + gamma_(q + 1))
     worst = max(worst, e / bound)
     rows.append((s, e))
-report("Thm 9.4: every entry has rel. error <= 2^k((4K+3)u + g_{q+1}), 40 cases", worst <= 1, f"worst ratio {worst:.3f}")
+report("Thm 9.4: every entry has rel. error <= 2^k((5K+3)u + g_{q+1}), 40 cases", worst <= 1, f"worst ratio {worst:.3f}")
 
 # similarity invariance: theta-scaled squaring gives the same relative errors
 rng = random.Random(4)

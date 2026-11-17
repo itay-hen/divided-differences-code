@@ -73,7 +73,9 @@ def dd_contour(f, xs, R=None, tau=1.0, rtol=1e-14, N=16, Nmax=2**16):
         T, T_old = S / N, T
         floor = 4 * (q + 2) * 2.0**-53 * A / N     # rounding level
         if abs(T - T_old) <= max(rtol * abs(T), floor):
-            return T / R**q
+            for _ in range(q):              # not T / R**q, which
+                T /= R                      # overflows for q > ~140
+            return T
     raise RuntimeError("trapezoid rule did not converge")
 
 
@@ -691,6 +693,20 @@ pv = lambda z: sum(cc * z**k for k, cc in enumerate(pcoef))
 tb = table([pv(x) for x in xs], xs)
 ty = dd_taylor(pcoef, xs, Fraction(0))[0]
 report("exact rationals: table = Opitz-Horner for a polynomial", tb == ty, f"{float(tb):.6g}")
+
+
+# ============================================================== 8.2 contour at high order
+_xs = [0.2 + 1e-3 * j / 150 for j in range(151)]
+with mp.workdps(60):
+    _y = [mp.mpf(x) - mp.mpf("0.2") for x in _xs]
+    _h = [mp.mpf(1)] + [mp.mpf(0)] * 30
+    for _v in _y:
+        for k in range(1, 31):
+            _h[k] += _v * _h[k - 1]
+    _ref = mp.e**mp.mpf("0.2") * mp.fsum(_h[k] / mp.factorial(k + 150) for k in range(31))
+_T = dd_contour(np.exp, _xs)
+report("Listing 8.2 at q=150 (value 2e-263): R^q no longer overflows",
+       abs(_T.real / float(_ref) - 1) < 1e-13, f"{_T.real:.4e} vs {float(_ref):.4e}")
 
 print()
 print(f"{sum(RESULTS)}/{len(RESULTS)} checks passed")

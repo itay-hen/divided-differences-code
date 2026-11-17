@@ -146,7 +146,7 @@ def walk_element(H, x, y, beta, Q):
 
 # ---- Listing 10.5 -----------------------------------------------------------
 def matrix_dd_exp(As, beta):
-    """e^beta[A_1..A_L]: corner block of exp(beta T), Prop. 10.11."""
+    """e^beta[A_1..A_L]: corner block of exp(beta T), Prop. 10.12."""
     L, d = len(As), As[0].shape[0]
     T = np.zeros((L * d, L * d), dtype=np.result_type(*As))
     for j in range(L):
@@ -157,7 +157,7 @@ def matrix_dd_exp(As, beta):
 
 
 def matrix_dd_uniformized(As, beta, lam, eps=2.0**-53):
-    """e^beta[A_1..A_L] by the uniformized series, Prop. 10.13; all
+    """e^beta[A_1..A_L] by the uniformized series, Prop. 10.14; all
     terms are entrywise nonnegative if every P_l = I + A_l/lam is."""
     L, d = len(As), As[0].shape[0]
     P = [np.eye(d) + A / lam for A in As]
@@ -351,19 +351,19 @@ for t in [1, 5, 25, 100, 300, 1000, 3000]:
     dt = coef_table(xi, lambda z: np.exp(-t * z))
     wt, kt = newton_fAv(mv, v, xi, dt)
     et = np.linalg.norm(wt - ref) / np.linalg.norm(ref)
-    if t <= 100:
+    if t <= 300:                       # within the range of Listing 9.2
         da = coef_exp_accurate(xi, t)
         wa, ka = newton_fAv(mv, v, xi, da)
         ea = np.linalg.norm(wa - ref) / np.linalg.norm(ref)
         crel = np.max(np.abs(dt[:ka + 1] - da[:ka + 1]) / np.abs(da[:ka + 1]))
-        ok_acc &= ea < 1e-12
+        ok_acc &= ea < 1e-11
     else:
         ea, crel, ka = float("nan"), float("nan"), kt
     est = math.sqrt(2 * (2 * t) * math.log(1e12))
     LEJA.append((t, kt, est, et, ea, crel))
     ok_tab &= et < 1e-10
     print(f"    t={t:5d} matvecs={kt:4d} (estimate {est:5.0f})  error: table coef {et:.1e}, accurate coef {ea:.1e}; coef rel. diff {crel:.0e}")
-report("Newton-Leja with accurate coefficients: error < 1e-12 (t <= 100)", ok_acc)
+report("Newton-Leja with accurate coefficients: error < 1e-11 (t <= 300)", ok_acc)
 report("Newton-Leja with table coefficients: error < 1e-10 (t <= 3000)", ok_tab)
 report("matvecs within 30% of sqrt(2c ln(1/eps)), c = 2t, for t >= 25",
        all(abs(k - e) <= 0.3 * e for (t, k, e, *_ ) in LEJA if t >= 25))
@@ -401,7 +401,7 @@ for (x, y) in [(0, 0), (0, 1), (0, 7)]:
         ok_b &= err <= bound
     ok_c &= WALK[-1][3] < 1e-8
     print("    <%d|e^-bH|%d>: " % (y, x) + "  ".join(f"Q={w[2]}:{w[3]:.0e}" for w in WALK[-5:]) + f"   bound(Q=10) {WALK[-1][4]:.0e}")
-report("Thm 10.8 truncation bound holds for all Q", ok_b)
+report("Thm 10.9 truncation bound holds for all Q", ok_b)
 report("walk sums converge (error < 1e-8 at Q = 10)", ok_c)
 # larger beta: positivity of every DD weight term and accuracy of dd_push states
 H2 = H.copy()

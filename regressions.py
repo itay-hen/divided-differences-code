@@ -60,6 +60,38 @@ ref = mp.mpf(th) ** 200 / mp.factorial(200)
 report("11.1 real-time squaring q=200, spread 0", abs(G[0, -1] / ref - 1) < 1e-12,
        f"{complex(G[0, -1]):.4e}")
 
+# ---- 1b. second review: high order, wide spread and negative time
+for q, s in ((260, 1500.0), (400, 1000.0)):
+    xs = [0.0] + [s] * q
+    lv = L09["dd_exp_taylor"](xs)
+    # reflect x -> s - x: exp[0, s^(q)] = (-1)^q e^s g[0^(q), s] with g(y) = e^-y,
+    # and g[0^(q), s] = (e^-s - sum_{k<q} (-s)^k/k!)/s^q
+    mp.mp.dps = 600
+    sm = mp.mpf(s)
+    g = (mp.e ** -sm - sum((-sm) ** k / mp.factorial(k) for k in range(q))) / sm ** q
+    ref = sm + mp.log((-1) ** q * g)
+    mp.mp.dps = 40
+    report(f"9.1 Taylor q={q}, s={s:g}: finite and accurate", math.isfinite(lv) and abs(lv - ref) < 1e-9,
+           f"{abs(lv - float(ref)):.1e}")
+xs = [0.2 + 1e-3 * j / 150 for j in range(151)]
+T = L08["dd_contour"](np.exp, xs)
+mp.mp.dps = 60
+xm = [mp.mpf(x) for x in xs]
+c = sum(xm) / len(xm)
+hs = [mp.mpf(1)] + [mp.mpf(0)] * 30
+for x in xm:
+    for k in range(1, 31):
+        hs[k] += (x - c) * hs[k - 1]
+ref = mp.e ** c * sum(hs[k] / mp.factorial(k + 150) for k in range(31))
+mp.mp.dps = 40
+report("8.2 contour q=150: no underflow to zero", abs(T / complex(ref) - 1) < 1e-12, f"{abs(T):.4e}")
+E4 = [0.0, 1.0, 2.5, 4.0]
+for tt in (50.0, -50.0):
+    mid, th, G = L11["dd_expi_squaring"](E4, tt)
+    val = (-1j * tt) ** 3 * np.exp(-1j * tt * mid) * th ** -3 * G[0, -1]
+    ex = sum(mp.e ** (-1j * tt * e) / mp.fprod(e - f for f in E4 if f != e) for e in E4)
+    report(f"11.1 real-time squaring at t={tt:g}", abs(val - complex(ex)) / (abs(tt) ** 3 / 6) < 1e-13)
+
 # ---- 2. contour stopping rule (Listing 8.2): documented aliasing
 f = lambda z: 1 + z ** 32
 T = L08["dd_contour"](f, [0.0], R=1.0)
